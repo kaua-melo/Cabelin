@@ -4,6 +4,6 @@ CABELIN is an application developed in openFrameworks (version 0.9.8), a free, o
 
 # Instructions
 
-The first step is to have openFrameworks installed. You can find the instructions on how to install it on their [website](https://openframeworks.cc/download/) (the app was developed on version 0.9.8). Once you have OF installed and made sure you can run the examples, copy and paste the 'Cabelin' folder inside apps/myApps, type $ make, and then $ make RunRelease.
+The first step is to have openFrameworks installed. You can find the instructions on how to install it on their [website](https://openframeworks.cc/download/) (the app was developed on version 0.9.8). Once you have OF installed and made sure you can run the examples, copy and paste the 'Cabelin' folder inside *apps/myApps*, type *$ make*, and then *$ make RunRelease*.
 
 
