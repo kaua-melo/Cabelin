@@ -7,11 +7,14 @@
 #include "Canvas.h"
 #include "ofxOpenCv.h"
 #include "blobTracker.h"
-
+#include "ofxKinectV2.h"
 #include <algorithm> // In order to use (std::find(pos.begin(), pos.end(), p) != pos.end())
 					 //  That checks if the vector 'pos' contains  'p'
 
-#define _USE_LIVE_VIDEO // uncomment this to use a live camera instead of a video file.
+// You should have only one of the options below uncommented.
+//define _USE_LIVE_VIDEO // uncomment this to use a live camera instead of a video file or Kinect.
+//#define _USE_VIDEO_FILE // uncomment this to use a pre recorded video.
+#define _USE_KINECT // uncomment this to use kinect.
 
 class ofApp : public ofBaseApp
 {
@@ -45,6 +48,12 @@ public:
 
 	void saveScreen(ofImage &img, int x, int y, int w, int h, string fileName);
 
+	// This will be called every time the maxDistance slider in the GUI is changed.
+	// It will set the maxDistance variable from the BlobTracker object.
+	// In sum, if the distance between blob A to blob A' (from previous frame) is
+	//	smaller than maxDistance, then A and A' are considere the same blob.
+	void maxDistanceChanged(int &newMaxDistance);
+
 	vector<PerlinNoiseGrid *> pGrids;
 
 	vector<LockOfHair *> lockOfHairs;
@@ -55,6 +64,9 @@ public:
 	// The background image the user is gonna drop onto the window
 	ofImage bImg;
 	string background_img_name;
+
+	// The poster to be drawn on the right side of the screen.
+	//ofImage poster_img;
 
 	// left and top border of the image on the window.
 	// This will be useful when saving the frames
@@ -117,11 +129,38 @@ public:
 	int width,
 		height;
 
-#ifdef _USE_LIVE_VIDEO
+	// This will be used to identify whether we are using
+	//  a webcam, a pre recorded video, or a kinect as the input
+	//  method.
+	// 0 -> pre recorded video
+	// 1 -> webcam
+	// 2 -> kinect
+	int input_modality;
+
+	//#ifdef _USE_LIVE_VIDEO // Let's use the webcam.
 	ofVideoGrabber camera;
-#else
+	//#elif defined _USE_VIDEO_FILE // Let's use the pre-recorded video
 	ofVideoPlayer video;
-#endif
+	//#elif defined _USE_KINECT	 // Let's use the kinect
+	ofxPanel kinect_gui;
+
+	// GUI for the blob tracker.
+	// Here you'll pick the maxNumber of blobs. Min/Max area.
+	ofxPanel blob_tracker_gui;
+	ofxIntSlider min_area;			// min area to be considered a blob
+	ofxIntSlider max_area;			// max area to be considered a blob
+	ofxIntSlider max_num_blobs;		// max number of blobs in a scene
+	ofxIntSlider threshold;			// threshold to be used in the grayDiff image
+	ofxIntSlider maxDistance;		// max distance from one blob to the other in 2 subsequent frames.
+									//  If the dist. between two blobs is smaller than this, it means that those
+									//  two blobs are the same.
+	ofxFloatSlider force_from_blob; // The magnitude of the force that the blobs will apply on the hairs.
+
+	std::vector<std::shared_ptr<ofxKinectV2>> kinects;
+	std::vector<ofTexture> texDepth;
+
+	std::size_t currentKinect = 0;
+	//#endif
 
 	ofxCvColorImage colorImg;
 	ofxCvColorImage colorImg_crop;
@@ -135,7 +174,7 @@ public:
 	ofxCvContourFinder previousContourFinder;
 	ofxCvContourFinder contourFinder;
 
-	int threshold;
+	//int threshold;
 	bool saveBackground;
 
 	bool draw_video;

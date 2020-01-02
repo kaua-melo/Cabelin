@@ -12,7 +12,8 @@ Blob::Blob()
 
     // font.loadFont("verdana.ttf", 15); //(you need verdana.ttf inside your bin/data/  folder)
 
-    maxVelocity = 8;
+    //maxVelocity = 8;
+    maxVelocity = 1000;
 }
 
 Blob::Blob(ofxCvBlob b) : Blob()

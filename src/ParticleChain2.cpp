@@ -15,6 +15,8 @@ ParticleChain2::ParticleChain2(float _length, ofVec2f pos, int _thickness, int _
     // gap between particles
     float gap = length / (np - 1);
 
+    //cout << "gap: " << gap << endl;
+
     // creating the particles
     for (int i = 0; i < np; i++)
     {
@@ -23,6 +25,8 @@ ParticleChain2::ParticleChain2(float _length, ofVec2f pos, int _thickness, int _
                                             f,                                 // friction with the medium
                                             sl,                                // speed limit
                                             c));                               // color of the particle
+
+        //cout << "p: " << particles[i].pos.x << ", " << particles[i].pos.y << endl;
     }
 
     // CONNECTING THE PARTICLES -------------------------------------------------------
@@ -76,20 +80,29 @@ void ParticleChain2::drawThinL()
 {
     ofSetColor(c);
 
+    //cout << "color: " << int(c.r) << " " << int(c.g) << " " << int(c.b) << endl;
+
     ofPolyline line;
 
     // for first connection (particle 0 and 1)
     line.curveTo(particles[0].pos.x, particles[0].pos.y);
     line.curveTo(particles[0].pos.x, particles[0].pos.y);
 
+    //cout << "p: " << particles[0].pos.x << ", " << particles[0].pos.y << endl;
+
     // connections between particles in the middle
     for (int i = 1; i < np; i++)
     {
         line.curveTo(particles[i].pos.x, particles[i].pos.y);
+
+        //cout << "p: " << particles[i].pos.x << ", " << particles[i].pos.y << endl;
     }
 
     // for last particle
     line.curveTo(particles[np - 1].pos.x, particles[np - 1].pos.y);
+
+    //cout << "p: " << particles[np - 1].pos.x << ", " << particles[np - 1].pos.y << endl;
+    //cout << "---------------------------------------" << endl;
 
     // There are two ways of setting the weight
     // of a line in OF: ofSetLineWidth(2) and glLineWidth(20);

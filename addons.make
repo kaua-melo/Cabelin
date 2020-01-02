@@ -1,1 +1,3 @@
+ofxOpenCV
 ofxGui
+ofxKinectV2

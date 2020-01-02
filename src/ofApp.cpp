@@ -7,18 +7,27 @@
 //--------------------------------------------------------------
 void ofApp::setup()
 {
+	// Poster to be drawn
+	//poster_img.load("poster.png");
+
 	// load the mouse icon image
 	//mouseIcon.load("micon.png");
 
 	ofSetFrameRate(60);
 	ofBackground(100, 100, 100, 255);
 
+	ofEnableSmoothing(); // ATTENTION HERE!
+						 // You use ofEnableSmoothing() in order to smooth the ofPolyline that you
+						 //  draw in the ParticleChain2.cpp. Another way of smoothing the lines is through
+						 //  setting a higher number of samples of the fbo (your fbos are inside the Canvas object).
+						 //	If you increase the number of samples there and use the ofEnableSmoothing() at the same time
+						 //  you'll get crap results. Make sure you use either ofEnableSmoothing() or increase the number
+						 //  of samples in your fbo.
+
 	canvas = new Canvas(ofGetWidth(), ofGetHeight());
+	//canvas = new Canvas(1920, 1080);
 	//canvas->setNumberSamples(8); // Setting the Number of Samples on the fbo
 	canvas->setNumberSamples(0); // Setting the Number of Samples on the fbo
-
-	bTracker = new BlobTracker(1000, true, false);
-	//lobTracker(int mxD, bool calculateVel, bool d); -> (maxDistance, calculateVel?, debug?)
 
 	pGrids.push_back(new PerlinNoiseGrid(ofVec2f(300, 250),			   // Top-lef corner of the grid
 										 ofVec2f(400, 300),			   // (gridWidth, gridHeight)
@@ -81,51 +90,158 @@ void ofApp::setup()
 	is_resizing_camera_height = false;
 	is_resizing_camera_width = false;
 
-// Sets the verbosity - this can be useful for debugging the video grabber interface. you can set the verbosity and then try initGrabber();
-#ifdef _USE_LIVE_VIDEO
-	camera.setVerbose(true);
+	// input_modality is used to identify whether we are using
+	//  a webcam, a pre recorded video, or a kinect as the input
+	//  method.
+	// 0 -> pre recorded video
+	// 1 -> webcam
+	// 2 -> kinect
 
-	// There may be cases where it helps to not use a texture in order to save memory or for better performance.
-	camera.setUseTexture(false);
-
-	// The default webcam dimensions are: 640x480.
-	// If you set it up for something smaller than 640x480, it will be automatically set to 640x480.
-	// You can set it to 1280x960 though.
-	camera.setup(640, 480);
-	//camera.setup(1280, 960);
-
-	// Check what are the camera dimensions:
-	//cout<< "WIDTH: "  << camera.getWidth()  << endl;
-	//cout<< "HEIGHT: " << camera.getHeight() << endl;
-
-	colorImg.allocate(camera.getWidth(), camera.getHeight());
-
-	//cout<< "colorImg.allocate: " << colorImg.getWidth() << " " << colorImg.getHeight() << endl;
-
-	// Keeping the  aspect ratio
-	//width = 640; //width  = 320;
-	//height = width/( camera.getWidth() / camera.getHeight() );
-
-#else
-	video.load("slidingOver.mp4");
-	//video.load("bodyTest.mp4");
-	//video.load("velocity.mp4");
-	//video.load("fingers.mov");
-	//video.load("movingShapes.mp4");
-
-	video.play();
-	video.setLoopState(OF_LOOP_NORMAL);
-
-	colorImg.allocate(video.getWidth(), video.getHeight());
-	cout << "colorImg.allocate: " << colorImg.getWidth() << " " << colorImg.getHeight() << endl;
-
-	// Keeping the video aspect ratio
-	//width = 640; //width  = 320;
-	height = width / (video.getWidth() / video.getHeight());
-
+#ifdef _USE_LIVE_VIDEO // Using the webcam
+	input_modality = 1;
+#elif defined _USE_VIDEO_FILE // Using the pre-recorded video
+	input_modality = 0;
+#elif defined _USE_KINECT	 // Let's use the kinect
+	input_modality = 2;
 #endif
 
-	threshold = 76;
+	//#ifdef _USE_LIVE_VIDEO // Using the webcam
+	if (input_modality == 1) // If we are using the webcam
+	{
+		// Sets the verbosity - this can be useful for debugging the video grabber interface. you can set the verbosity and then try initGrabber();
+		camera.setVerbose(true);
+
+		// There may be cases where it helps to not use a texture in order to save memory or for better performance.
+		camera.setUseTexture(false);
+
+		// The default webcam dimensions are: 640x480.
+		// If you set it up for something smaller than 640x480, it will be automatically set to 640x480.
+		// You can set it to 1280x960 though.
+		camera.setup(640, 480);
+		//camera.setup(1280, 960);
+
+		// Check what are the camera dimensions:
+		//cout<< "WIDTH: "  << camera.getWidth()  << endl;
+		//cout<< "HEIGHT: " << camera.getHeight() << endl;
+
+		colorImg.allocate(camera.getWidth(), camera.getHeight());
+
+		//cout<< "colorImg.allocate: " << colorImg.getWidth() << " " << colorImg.getHeight() << endl;
+
+		// Keeping the  aspect ratio
+		//width = 640; //width  = 320;
+		//height = width/( camera.getWidth() / camera.getHeight() );
+	}
+
+	//#elif defined _USE_VIDEO_FILE // Using the pre-recorded video
+	else if (input_modality == 0) // If we are using the pre recorded video
+	{
+		video.load("slidingOver.mp4");
+		//video.load("bodyTest.mp4");
+		//video.load("velocity.mp4");
+		//video.load("fingers.mov");
+		//video.load("movingShapes.mp4");
+
+		video.play();
+		video.setLoopState(OF_LOOP_NORMAL);
+
+		colorImg.allocate(video.getWidth(), video.getHeight());
+		cout << "colorImg.allocate: " << colorImg.getWidth() << " " << colorImg.getHeight() << endl;
+
+		// Keeping the video aspect ratio
+		//width = 640; //width  = 320;
+		height = width / (video.getWidth() / video.getHeight());
+	}
+
+	//#elif defined _USE_KINECT // Let's use the kinect
+	else if (input_modality == 2) // If we are using the kinect
+	{
+		// Uncomment for verbose info from libfreenect2
+		ofSetLogLevel(OF_LOG_VERBOSE);
+
+		//see how many devices we have.
+		ofxKinectV2 tmp;
+		std::vector<ofxKinectV2::KinectDeviceInfo> deviceList = tmp.getDeviceList();
+
+		//
+		kinects.resize(deviceList.size());
+		texDepth.resize(kinects.size());
+
+		//kinect_gui.setup("", "settings.xml", 10, 100);
+
+		// Defining the kinect's settings.
+		ofxKinectV2::Settings ksettings;
+		ksettings.enableRGB = false;
+		ksettings.enableIR = false;
+		ksettings.enableDepth = true;
+		ksettings.enableRGBRegistration = false;
+		ksettings.config.MinDepth = 0.5;
+		ksettings.config.MaxDepth = 8.0;
+		// Note you don't have to use ofxKinectV2 as a shared pointer, but if you
+		// want to have it in a vector ( ie: for multuple ) it needs to be.
+		for (int d = 0; d < kinects.size(); d++)
+		{
+			kinects[d] = std::make_shared<ofxKinectV2>();
+			kinects[d]->open(deviceList[d].serial, ksettings);
+			//kinect_gui.add(kinects[d]->params);
+		}
+
+		//kinect_gui.loadFromFile("settings.xml");
+
+		/*
+		while (!kinects[currentKinect]->isFrameNew())
+		{
+			cout << ".k-> Waiting for the first kinect frame" << endl;
+		}
+
+		if (kinects[currentKinect]->isDepthEnabled())
+			texDepth[currentKinect].loadData(kinects[currentKinect]->getDepthPixels());
+
+		colorImg.allocate(texDepth[currentKinect].getWidth(), texDepth[currentKinect].getHeight());
+		*/
+		//colorImg.allocate(512, 424);
+	}
+	//#endif
+
+	// Setting up the blob tracker gui ------
+	blob_tracker_gui.setup();
+	blob_tracker_gui.setName("Blob Tracker");
+
+	blob_tracker_gui.add(threshold.setup("Threshold", 76, 0, 400));
+	// min area to be considered a blob
+	blob_tracker_gui.add(min_area.setup("Min Area", 1400, 0, 0.05 * (video_dimension.x * video_dimension.y)));
+	// max area to be considered a blob
+	// video_dimension.x * video_dimension.y -> the area of the whole rectangle
+	blob_tracker_gui.add(max_area.setup("Max Area",
+										0.8 * (video_dimension.x * video_dimension.y),
+										0,
+										video_dimension.x * video_dimension.y));
+	// max number of blobs in a scene
+	blob_tracker_gui.add(max_num_blobs.setup("Max N blobs", 5, 0, 10));
+
+	blob_tracker_gui.add(maxDistance.setup("Max Distance", 1000, 0, 2000));
+
+	// The magnitude of the force that the blobs will apply on the hairs.
+	blob_tracker_gui.add(force_from_blob.setup("Blobs' force", 0.015, 0, 0.1));
+
+	maxDistance.addListener(this, &ofApp::maxDistanceChanged);
+
+	// In case we are using kinect, let's add its GUI to our BlobTracker GUI
+	if (input_modality == 2)
+	{
+		// Note you don't have to use ofxKinectV2 as a shared pointer, but if you
+		// want to have it in a vector ( ie: for multuple ) it needs to be.
+		for (int d = 0; d < kinects.size(); d++)
+		{
+			blob_tracker_gui.add(kinects[d]->params);
+		}
+		//blob_tracker_gui.loadFromFile("settings.xml");
+	}
+	// --------------------------------------
+
+	bTracker = new BlobTracker(maxDistance, true, false);
+	//lobTracker(int mxD, bool calculateVel, bool d); -> (maxDistance, calculateVel?, debug?)
+
 	saveBackground = true;
 
 	draw_video = true;
@@ -139,57 +255,129 @@ void ofApp::update()
 	//  Updating video --------------------------------------
 	bool newFrame = false;
 
-#ifdef _USE_LIVE_VIDEO
-	camera.update();
-	newFrame = camera.isFrameNew(); // if newFrame == false  ->  we don't have a new frame.
-#else
-	video.update();
-	newFrame = video.isFrameNew();
-#endif
+	//#ifdef _USE_LIVE_VIDEO // Using the webcam
+	if (input_modality == 1)
+	{
+		camera.update();
+		newFrame = camera.isFrameNew(); // if newFrame == false  ->  we don't have a new frame.
+	}
+	//#elif defined _USE_VIDEO_FILE // Using the pre-recorded video
+	else if (input_modality == 0)
+	{
+		video.update();
+		newFrame = video.isFrameNew();
+	}
+	//#elif defined _USE_KINECT // Let's use the kinect
+	else if (input_modality == 2)
+	{
+		for (int d = 0; d < kinects.size(); d++)
+		{
+			kinects[d]->update();
+
+			if (kinects[d]->isFrameNew())
+			{
+				newFrame = true;
+			}
+		}
+	}
+	//#endif
 
 	if (newFrame)
 	{
-// Getting the current frame of the video.
-#ifdef _USE_LIVE_VIDEO
-		colorImg.setFromPixels(camera.getPixels());
-#else
-		colorImg.setFromPixels(video.getPixels());
-#endif
+		// Getting the current frame of the video.
+		//#ifdef _USE_LIVE_VIDEO // Using the webcam
+		if (input_modality == 1)
+		{
+			colorImg.setFromPixels(camera.getPixels());
+		}
+		//#elif defined _USE_VIDEO_FILE // Using the pre-recorded video
+		else if (input_modality == 0)
+		{
+			colorImg.setFromPixels(video.getPixels());
+		}
+		//#elif defined _USE_KINECT // Let's use the kinect
+		else if (input_modality == 2)
+		{
+			for (int d = 0; d < kinects.size(); d++)
+			{
+				kinects[d]->update();
+
+				if (kinects[d]->isFrameNew())
+				{
+					if (kinects[d]->isDepthEnabled())
+						texDepth[d].loadData(kinects[d]->getDepthPixels());
+				}
+			}
+
+			ofTexture tex = texDepth[currentKinect];
+			ofPixels pixels;
+			tex.readToPixels(pixels);
+
+			// ofxCvColorImage only work without alpha, so we need to set the
+			//  'pixels' to the image type without alpha (OF_IMAGE_COLOR).
+			// If we don't do this, the colorImg get glitchy.
+			// Discussion about this: https://forum.openframeworks.cc/t/solved-opencv-ofxcvcolorimage-from-oftexture-gives-glitchy-image/20537
+			pixels.setImageType(OF_IMAGE_COLOR);
+
+			colorImg.setFromPixels(pixels);
+		}
+		//#endif
 
 		// The line below outputs the following message on the console: "[notice ] ofxCvColorImage: setFromPixels(): reallocating to match dimensions: 320 240"
 		// Not sure how to remove it :/  Someone had the same issue in the forum: https://forum.openframeworks.cc/t/ofxcvcolorimage-resize-reallocation/16870
 		// *An idea: Try using ofxCvIamge instead of ofxCvColorImage
 		// colorImg.resize(width, height);
+
 		colorImg.resize(video_dimension.x, video_dimension.y);
 
 		// In case we are using the webcam, we should flip the image in order to have like a mirror.
-		colorImg.mirror(false, true);
-
-		// grayImg gets the gray scale of the camera's frame.
-		grayImg = colorImg;
-
-		// If we press ' ', we save the current background that will be used to compare with the current camera frame.
-		if (saveBackground == true)
+		if (input_modality == 1)
 		{
-			cout << "SAVING BACKGROUND !" << endl;
-			grayBackground = grayImg;
-			saveBackground = false;
+			colorImg.mirror(false, true);
 		}
+		//#endif
 
-		// Gets the difference between the 2 images.
-		grayDiff.absDiff(grayBackground, grayImg);
+		if (input_modality == 1 || input_modality == 0)
+		{
+			// grayImg gets the gray scale of the camera's frame.
+			grayImg = colorImg;
 
-		// Sets the contrast of the image.
-		grayDiff.threshold(threshold);
+			// If we press ' ', we save the current background that will be used to compare with the current camera frame.
+			if (saveBackground == true)
+			{
+				cout << "SAVING BACKGROUND !" << endl;
+				grayBackground = grayImg;
+				saveBackground = false;
+			}
 
-		// Find the blobs in the grayDiff image
-		bTracker->findBlobs(grayDiff, 10, video_dimension.x * video_dimension.y, 5, false);
+			// Gets the difference between the 2 images.
+			grayDiff.absDiff(grayBackground, grayImg);
 
-		// (ofxCvGrayscaleImage &input,
-		//  int minArea,
-		//  int maxArea,
-		//  int nConsidered, -> maximum number of blobs to be considered
-		//  bool bFindHoles
+			// Sets the contrast of the image.
+			grayDiff.threshold(threshold);
+
+			// Find the blobs in the grayDiff image
+			//bTracker->findBlobs(grayDiff, 10, video_dimension.x * video_dimension.y, 5, false);
+			bTracker->findBlobs(grayDiff, min_area, max_area, max_num_blobs, false);
+
+			// (ofxCvGrayscaleImage &input,
+			//  int minArea,
+			//  int maxArea,
+			//  int nConsidered, -> maximum number of blobs to be considered
+			//  bool bFindHoles
+		}
+		else if (input_modality == 2) // In case we are using Kinect
+		{
+			// grayImg gets the gray scale of the camera's frame.
+			grayDiff = colorImg;
+
+			// Sets the contrast of the image.
+			grayDiff.threshold(threshold);
+
+			// Find the blobs in the grayDiff image
+			//bTracker->findBlobs(grayDiff, 10, video_dimension.x * video_dimension.y, 5, false);
+			bTracker->findBlobs(grayDiff, min_area, max_area, max_num_blobs, false);
+		}
 	}
 	// ------------------------------------------------------
 
@@ -290,7 +478,7 @@ void ofApp::update()
 						{
 							//cout << " ! INSIDE! " << endl;
 							// Apply force to the particle HERE YOU SET HOW STRONG THE FORCE SHOULD BE!
-							lockOfHairs[l]->hairs[i].particles[p].addForce(it->second.vel * 0.015);
+							lockOfHairs[l]->hairs[i].particles[p].addForce(it->second.vel * force_from_blob);
 
 							//cout << "	-vel: " << it->second.vel << endl;
 						}
@@ -331,6 +519,7 @@ void ofApp::draw()
 	ofSetColor(255, 255, 255);
 
 	canvas->fbo.begin();
+
 	ofClear(255, 255, 255); // , 255);	// clearing/Setting all pixels on the fbo to a color.
 
 	// If the user has dropped an image onto the window, we should draw it.
@@ -338,6 +527,9 @@ void ofApp::draw()
 	{
 		bImg.draw(0, 0);
 	}
+
+	// Draw poster
+	//poster_img.draw(canvas->width - poster_img.getWidth(), 0);
 
 	// Drawing the video ----------------------------------
 	/*
@@ -355,6 +547,14 @@ void ofApp::draw()
 	{
 		ofSetColor(255, 255, 255, 150);
 		colorImg.draw(video_pos.x, video_pos.y);
+
+		// Drawing how the computer sees the image
+		//ofSetColor(0, 0, 0, 150);
+		grayDiff.draw(video_pos.x,
+					  video_pos.y + colorImg.getHeight(),
+					  colorImg.getWidth() / 2,
+					  colorImg.getHeight() / 2);
+
 		ofSetColor(255, 255, 255, 255);
 
 		// Drawing the video's resizing controllers
@@ -411,6 +611,10 @@ void ofApp::draw()
 		}
 	}
 
+#ifdef _USE_KINECT // Let's use the kinect
+	kinect_gui.draw();
+#endif
+
 	// Printing "Instructions"
 	if (showInstructions)
 	{
@@ -438,6 +642,11 @@ void ofApp::draw()
 		ofSetColor(colorBeingPicked);
 		ofFill();
 		ofDrawRectangle(ofGetWidth() - 150, ofGetHeight() - 150, 100, 100);
+	}
+
+	if (!hideGUIS)
+	{
+		blob_tracker_gui.draw();
 	}
 
 	// Save every frame
@@ -473,6 +682,7 @@ void ofApp::draw()
 	//mouseIcon.draw(mouseX, mouseY);
 
 	// Report for the video threshold:
+	/*
 	//ofSetHexColor(0xffffff);
 	ofSetColor(0);
 	stringstream reportStr;
@@ -480,12 +690,13 @@ void ofApp::draw()
 			  << "threshold " << threshold << " (press: arrow up/down)" << endl
 			  << "num blobs found " << bTracker->cBlobs.size() << ", fps: " << ofGetFrameRate();
 	ofDrawBitmapString(reportStr.str(), 20, 700);
+	*/
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key)
 {
-	// cout << "KeyPressed:" << key << endl;
+	//cout << "KeyPressed:" << key << endl;
 
 	switch (key)
 	{
@@ -632,6 +843,7 @@ void ofApp::keyPressed(int key)
 	case 104:
 	{
 		hideGUIS = !hideGUIS;
+		showInstructions = !showInstructions;
 
 		// HIDE GUIS
 		if (hideGUIS)
@@ -708,9 +920,18 @@ void ofApp::keyPressed(int key)
 	}
 
 	// up arrow
-	case 357:
+	case 57357:
 	{
-		threshold++;
+		//threshold++;
+		//threshold.set("Threshold", 76, 0, 400);
+		//blob_tracker_group.add(threshold.set("Threshold", threshold + 1, 0, 400));
+
+		/*
+		threshold.setup(threshold + 1);
+	blob_tracker_group.add(threshold.set("Threshold", 76, 0, 400));
+*/
+		threshold = threshold + 1;
+
 		if (threshold > 255)
 			threshold = 255;
 
@@ -719,9 +940,11 @@ void ofApp::keyPressed(int key)
 	}
 
 	// down arrow
-	case 359:
+	case 57359:
 	{
-		threshold--;
+		//threshold--;
+		threshold = threshold - 1;
+
 		if (threshold < 0)
 			threshold = 0;
 
@@ -776,6 +999,25 @@ void ofApp::keyPressed(int key)
 
 		js["canvas"] = canvas_js;
 		js["lock_of_hair_in_focus"] = lockOfHairInUse;
+
+		// Video (from camera, kinect, or pre recorded video) on canvas
+		ofJson video_pos_js;
+		video_pos_js["x"] = video_pos.x;
+		video_pos_js["y"] = video_pos.y;
+		js["video_pos"] = video_pos_js;
+		// ----------------------------------------------------------------------------------------------
+
+		// Saving Blob Tracker GUI ----------------------------------------------------------------------
+		ofJson blob_tracker_gui_js;
+
+		blob_tracker_gui_js["min_area"] = int(min_area);
+		blob_tracker_gui_js["max_area"] = int(max_area);
+		blob_tracker_gui_js["max_num_blobs"] = int(max_num_blobs);
+		blob_tracker_gui_js["threshold"] = int(threshold);
+		blob_tracker_gui_js["maxDistance"] = int(maxDistance);
+		blob_tracker_gui_js["force_from_blob"] = float(force_from_blob);
+
+		js["blob_tracker_gui"] = blob_tracker_gui_js;
 		// ----------------------------------------------------------------------------------------------
 
 		// Let's save all the PerlinNoiseGrids ----------------------------------------------------------
@@ -912,7 +1154,15 @@ void ofApp::keyPressed(int key)
 				head_js["y"] = lockOfHairs[j]->hairs[p].head.y;
 				hair_js["head"] = head_js;
 
-				// Thickness and Color should be retrieved from LockOfHair
+				// Thickness should be retrieved from LockOfHair
+
+				// Info about the hairs' colors
+				ofJson chain_color_js;
+				chain_color_js["r"] = int(lockOfHairs[j]->hairs[p].c.r);
+				chain_color_js["g"] = int(lockOfHairs[j]->hairs[p].c.g);
+				chain_color_js["b"] = int(lockOfHairs[j]->hairs[p].c.b);
+				chain_color_js["a"] = int(lockOfHairs[j]->hairs[p].c.a);
+				hair_js["color"] = chain_color_js;
 
 				hairs_js.push_back(hair_js);
 			}
@@ -972,19 +1222,33 @@ void ofApp::keyPressed(int key)
 
 			// Canvas
 			// In case there was a picture in the background, set the canvas to its dimension.
-			if (b_img_name != "")
-			{
-				canvas = new Canvas(bImg.getWidth(), bImg.getHeight());
-			}
+			//if (b_img_name != "")
+			//{
+			//	canvas = new Canvas(bImg.getWidth(), bImg.getHeight());
+			//}
 			// Otherwise, set the canvas to the dimensions saved on the json file
-			else
-			{
-				canvas = new Canvas(js["canvas"]["width"], js["canvas"]["height"]);
-			}
+			//else
+			//{
+			canvas = new Canvas(js["canvas"]["width"], js["canvas"]["height"]);
+			//}
 
 			//canvas->setNumberSamples(8); // Setting the Number of Samples on the fbo
 			canvas->setNumberSamples(0); // Setting the Number of Samples on the fbo
 			canvas->setPosition(ofVec2f(js["canvas"]["x"], js["canvas"]["y"]));
+			// -----------------------------------------------------------------------------------------------
+
+			// Setting Blob Tracker GUI ----------------------------------------------------------------------
+			min_area = int(js["blob_tracker_gui"]["min_area"]);
+			max_area = int(js["blob_tracker_gui"]["max_area"]);
+			max_num_blobs = int(js["blob_tracker_gui"]["max_num_blobs"]);
+			threshold = int(js["blob_tracker_gui"]["threshold"]);
+			maxDistance = int(js["blob_tracker_gui"]["maxDistance"]);
+			force_from_blob = float(js["blob_tracker_gui"]["force_from_blob"]);
+			// -----------------------------------------------------------------------------------------------
+
+			// Seeting Video's position (from camera, kinect, or pre recorded video) on canvas ---------------
+			video_pos.x = int(js["video_pos"]["x"]);
+			video_pos.y = int(js["video_pos"]["y"]);
 			// -----------------------------------------------------------------------------------------------
 
 			// LOAD THE PERLIN NOISE GRIDS -------------------------------------------------------------------
@@ -1025,9 +1289,9 @@ void ofApp::keyPressed(int key)
 				int index = pnoise_grid["index"];
 
 				// Get force information
-				float force = pnoise_grid["force"]["magnitude"];
-				float angle = pnoise_grid["force"]["angle"];
-				float aperture = pnoise_grid["force"]["aperture"];
+				float force = float(pnoise_grid["force"]["magnitude"]);
+				float angle = float(pnoise_grid["force"]["angle"]);
+				float aperture = float(pnoise_grid["force"]["aperture"]);
 
 				// Create a PerlinNoiseGrid
 				pGrids.push_back(new PerlinNoiseGrid(pos,		 // Top-lef corner of the grid
@@ -1072,7 +1336,6 @@ void ofApp::keyPressed(int key)
 				ofVec2f hair_gui_pos(lhair_js["gui"]["x"], lhair_js["gui"]["y"]);
 
 				// Create the LockOfHair
-
 				lockOfHairs.push_back(new LockOfHair(lhair_js["name"],  // name
 													 hair_gui_pos,		// position
 													 lhair_js["index"], // index
@@ -1124,17 +1387,23 @@ void ofApp::keyPressed(int key)
 					// Head position
 					ofVec2f headPosition(hair_js["head"]["x"], hair_js["head"]["y"]);
 
+					ofColor chainColor = ofColor(hair_js["color"]["r"],
+												 hair_js["color"]["g"],
+												 hair_js["color"]["b"],
+												 hair_js["color"]["a"]);
+
 					// Create a chain
-					lockOfHairs[lockOfHairs.size() - 1]->hairs.push_back(ParticleChain2(length,										// length
-																						headPosition,								// head position
-																						float(lhair_js["features"]["thickness"]),   // thickness of the chain
-																						np,											// number of particles
-																						float(lhair_js["features"]["friction"]),	// friction with the medium. 1 = no friction / 0 = maximum friction
-																						float(lhair_js["features"]["speed_limit"]), // speed limit
-																						c,											// color
-																						float(lhair_js["features"]["stiffness"]),   // stiffness; 0 = no connection (too flexible) / 1 = rigid connection
-																						float(lhair_js["features"]["damping"]))		// damping coefficient; 0=no damping / 1= maximum damping
-					);
+					lockOfHairs[lockOfHairs.size() - 1]
+						->hairs.push_back(ParticleChain2(length,									 // length
+														 headPosition,								 // head position
+														 float(lhair_js["features"]["thickness"]),   // thickness of the chain
+														 np,										 // number of particles
+														 float(lhair_js["features"]["friction"]),	// friction with the medium. 1 = no friction / 0 = maximum friction
+														 float(lhair_js["features"]["speed_limit"]), // speed limit
+														 chainColor,								 // color
+														 float(lhair_js["features"]["stiffness"]),   // stiffness; 0 = no connection (too flexible) / 1 = rigid connection
+														 float(lhair_js["features"]["damping"]))	 // damping coefficient; 0=no damping / 1= maximum damping
+						);
 
 					// locking the first particle
 					lockOfHairs[lockOfHairs.size() - 1]->hairs[lockOfHairs[lockOfHairs.size() - 1]->hairs.size() - 1].particles[0].removeAttractionPoint(0);
@@ -1146,6 +1415,9 @@ void ofApp::keyPressed(int key)
 			// Setting the focus on the LockOfHair that was in focus before.
 			lockOfHairInUse = js["lock_of_hair_in_focus"];
 			focusOnLockOfHair(lockOfHairInUse);
+
+			// We have to set the ofxLabel numberOfHairs to nHairs otherwise the GUI will be displaying 0 until you add another hair.
+			lockOfHairs[lockOfHairs.size() - 1]->numberOfHairs = ofToString(lockOfHairs[lockOfHairs.size() - 1]->nHairs);
 			// -----------------------------------------------------------------------------------------------
 		}
 		else
@@ -1373,7 +1645,7 @@ void ofApp::dragEvent(ofDragInfo dragInfo)
 	bImg.load(dragInfo.files[dragInfo.files.size() - 1]);
 
 	// Allocating space for saving the frames when requested by the user.
-	canvas->allocate(bImg.getWidth(), bImg.getHeight());
+	//canvas->allocate(bImg.getWidth(), bImg.getHeight());
 
 	// The LockOfHair should know about the image in order to pick the color
 	//  by hovering over the image.
@@ -1524,4 +1796,13 @@ void ofApp::focusOnLockOfHair(int index)
 	// Let's focus the new LockOfHair
 	lockOfHairInUse = index;
 	lockOfHairs[lockOfHairInUse]->setLockOfHairStatus(true);
+}
+
+//--------------------------------------------------------------
+// Setting the maxDistance variable from the BlobTracker object.
+// In sum, if the distance between blob A to blob A' (from previous frame) is
+//	smaller than maxDistance, then A and A' are considere the same blob.
+void ofApp::maxDistanceChanged(int &newMaxDistance)
+{
+	bTracker->setMaxDistance(newMaxDistance);
 }
