@@ -140,6 +140,7 @@ class PerlinNoiseGrid
                         float r,    // radius
                         ofColor c); // color
         void drawGUI();
+        void drawSimple(ofVec2f topLeft);
 
     
         void move(ofVec2f newCenter);       // move the grid to the newCenter position
@@ -153,7 +154,6 @@ class PerlinNoiseGrid
         void nColumnsChanged(int & xNcells); // changed the number of columns
         void nLinesChanged(int & yNcells);   // changed the number of lines
         // -----------------------------------------------------------------------
-
     
         void repositionControls();
     

@@ -46,7 +46,7 @@ PerlinNoiseGrid::PerlinNoiseGrid(ofVec2f _pos, ofVec2f _gridDimensions, int _xNc
         gui.add(zIncrement.setup("zIncrement", _increment.z, 0, 0.05));    
         gui.add(force.setup("Force", 0.3, 0, 10));    
         gui.add(angle.setup("Main Direction", 0, 0, 360));    
-        gui.add(aperture.setup("Aperture", 45, 0, 360));    
+        gui.add(aperture.setup("Aperture", 0, 0, 360));    
         gui.add(visibility.setup("Hide grid", false));       
 	    gui.add(deleteGrid.setup("Destroy Grid", false));  
     
@@ -94,10 +94,14 @@ PerlinNoiseGrid::PerlinNoiseGrid(ofVec2f _pos, ofVec2f _gridDimensions, int _xNc
             verdana.setLetterSpacing(1.035);    
         // ==================================================================
     
-        gridLinesColor = ofColor(150);       
+        //gridLinesColor = ofColor(150);       
+        gridLinesColor = ofColor(255, 0, 94);
 }
 // ==================================================================================
 // ==================================================================================
+
+
+
 
 // ----------------------------------------------------------------------------------
 void PerlinNoiseGrid::hideGrid(bool & b)
@@ -205,7 +209,7 @@ void PerlinNoiseGrid::update()
 {
     vectorField.clear();
     
-    // -------------------------------------------------------------------------  
+    // --------------------------------------------------------------------------  
     // GETTING VALUES FROM THE PERLIN NOISE FUNCTION ----------------------------
 	float yTime = 0;
         
@@ -432,7 +436,7 @@ void PerlinNoiseGrid::draw()
                     //ofRotateX(teta);         
                     ofDrawLine(0, 0, 
                                vectorField[x+y*xNcells].x*vectorLength,                                
-                               vectorField[x+y*xNcells].y*vectorLength);                
+                               vectorField[x+y*xNcells].y*vectorLength );                
                 ofPopMatrix(); 
             }
         }    
@@ -491,6 +495,63 @@ void PerlinNoiseGrid::draw()
 
 
 
+void PerlinNoiseGrid::drawSimple(ofVec2f topLeft)
+{
+    ofNoFill();
+    ofSetLineWidth(1);
+
+    // Draw borders
+    ofSetColor(gridLinesColor);
+    ofDrawRectangle(pos.x + topLeft.x, pos.y + topLeft.y, 
+                    gridDimensions.x, gridDimensions.y);
+    
+    // Draw columns
+    for(int i=0; i<xNcells-1; i++)        
+    {
+        ofDrawLine(pos.x + (i+1)*cellDimensions.x + topLeft.x, 
+                   pos.y + topLeft.y , 
+                   pos.x + (i+1)*cellDimensions.x + topLeft.x, 
+                   pos.y + gridDimensions.y + topLeft.y
+                  );
+    }
+    
+    // Draw lines
+    for(int i=0; i<yNcells-1; i++)
+    {
+        ofDrawLine(pos.x + topLeft.x, 
+                   pos.y + (i+1)*cellDimensions.y + topLeft.y, 
+                   pos.x + gridDimensions.x + topLeft.x, 
+                   pos.y + (i+1)*cellDimensions.y + topLeft.y
+                  );
+    }
+
+    // Draw the vectors inside each cell -------------------------------------------   
+        //ofFill(); // if you are gonna draw the circles on the middle of the cell
+        ofSetColor(0, 255, 0);
+        //ofSetColor(255);
+        ofSetLineWidth(2);
+
+        //ofSetColor(0);
+        for(int y=0; y<yNcells; y++)
+        {
+            for(int x=0; x<xNcells; x++)                
+            {
+                ofPushMatrix();       
+                    ofTranslate(pos.x + x*cellDimensions.x + cellDimensions.x/2 + topLeft.x, 
+                                pos.y + y*cellDimensions.y + cellDimensions.y/2 + topLeft.y);
+                                
+                    //ofRotateX(teta);         
+                    ofDrawLine(0, 0, 
+                               vectorField[x+y*xNcells].x*vectorLength*(force/3),                                
+                               vectorField[x+y*xNcells].y*vectorLength*(force/3) );                
+                ofPopMatrix(); 
+            }
+        }    
+    // -----------------------------------------------------------------------------        
+}
+
+
+
 // ----------------------------------------------------------------------------------
 void PerlinNoiseGrid::move(ofVec2f newCenter)
 {
@@ -512,7 +573,6 @@ void PerlinNoiseGrid::move(ofVec2f newCenter)
                            pos.y + gridDimensions.y);    
 }
 // ----------------------------------------------------------------------------------
-
 
 
 
@@ -674,7 +734,7 @@ PerlinNoiseGrid::~PerlinNoiseGrid(void)
     //deleteGrid.removeListener(this, &PerlinNoiseGrid::suicide);
     //visibility.removeListener(this, &PerlinNoiseGrid::hideGrid);
     
-   cout << "~The grid " << index << " was destroyed" << endl;
+   //cout << "~The grid " << index << " was destroyed" << endl;
 }
             
             
